@@ -6,9 +6,15 @@ struct MenuBarView: View {
 
     var body: some View {
         Button {
-            appState.toggleLock()
+            if appState.isAuthorized {
+                appState.toggleLock()
+            } else {
+                openWindow(id: "onboarding")
+            }
         } label: {
-            if appState.isLocked {
+            if !appState.isAuthorized {
+                Label("输入法锁定: 未授权", systemImage: "lock.slash.fill")
+            } else if appState.isLocked {
                 Label("输入法锁定: 开启", systemImage: "lock.fill")
             } else {
                 Label("输入法锁定: 关闭", systemImage: "lock.open.fill")
@@ -48,6 +54,15 @@ struct MenuBarView: View {
 
         Button("退出 InputLock") {
             NSApplication.shared.terminate(nil)
+    }
+        .onAppear {
+            NotificationCenter.default.addObserver(
+                forName: .showOnboarding,
+                object: nil,
+                queue: .main
+            ) { _ in
+                openWindow(id: "onboarding")
+            }
         }
     }
 }

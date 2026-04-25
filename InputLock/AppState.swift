@@ -47,6 +47,10 @@ final class AppState {
     // MARK: - 公共方法
 
     func toggleLock() {
+        if !isLocked && !isAuthorized {
+            return
+        }
+
         isLocked.toggle()
         persistState()
 
@@ -86,9 +90,14 @@ final class AppState {
     func startup() {
         inputSourceService.refreshSources()
         availableSources = inputSourceService.availableSources
+        isAuthorized = authorizationService.isAuthorized
         authorizationService.startMonitoring()
 
-        if isLocked {
+        if !isAuthorized {
+            NotificationCenter.default.post(name: .showOnboarding, object: nil)
+        }
+
+        if isLocked && isAuthorized {
             eventDetector.startMonitoring()
         }
     }
@@ -168,4 +177,8 @@ final class AppState {
         defaults.set(lockedSourceID, forKey: "lockedSourceID")
         defaults.set(launchAtLoginEnabled, forKey: "launchAtLogin")
     }
+}
+
+extension Notification.Name {
+    static let showOnboarding = Notification.Name("ShowOnboarding")
 }

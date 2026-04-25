@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct InputLockApp: App {
     @State private var appState: AppState
+    @Environment(\.openWindow) private var openWindow
 
     init() {
         let auth = AuthorizationServiceImpl()
