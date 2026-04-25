@@ -1,0 +1,35 @@
+# Xcode
+Build/
+DerivedData/
+
+# User-specific data
+*.xcuserstate
+xcuserdata/
+
+# Build artifacts
+*.moved-aside
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# CocoaPods
+Pods/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+*.swp
+*.swo
+*~
+.idea/
