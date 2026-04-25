@@ -52,3 +52,9 @@ xcodebuild -project InputLock.xcodeproj -scheme InputLock test
 - 使用简体中文编写用户可见的注释
 - 源文件采用标准 Swift 命名规范（大驼峰用于类型，小驼峰用于方法和属性）
 - SwiftUI 视图放在 `InputLock/` 目录下，Xcode 会自动识别
+
+## Development Principles
+
+- **现代 macOS 开发准则** — 严格遵循 Apple 最新设计规范和开发最佳实践，以 macOS 26 SDK 为基准，不兼容旧版 API
+- **一致性** — UI 风格、交互模式、代码结构、命名方式全局保持一致，与系统原生应用体验对齐
+- **合理设计** — 类型职责清晰，层次分明，避免过度抽象也不过度耦合；每个模块只做一件事
