@@ -9,7 +9,7 @@
 | 语言 | Swift 6 (Strict Concurrency) |
 | UI 框架 | SwiftUI + AppKit |
 | 并发模型 | Swift Concurrency (async/await, Actor) |
-| 事件拦截 | ~~CGEvent Tap~~ 不再需要 |
+| 事件检测 | CGEventTap (listenOnly) |
 | 输入法 API | Carbon TIS (Text Input Source) |
 | 持久化 | UserDefaults + @AppStorage |
 | 最低部署 | macOS 26 |

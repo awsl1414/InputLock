@@ -11,7 +11,7 @@ import SwiftUI
 struct InputLockApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Text("InputLock")
         }
     }
 }
