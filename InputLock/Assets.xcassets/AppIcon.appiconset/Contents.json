@@ -31,6 +31,7 @@
       "size" : "128x128"
     },
     {
+      "filename" : "inputLock-macOS-Default-256x256@1x.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "256x256"
@@ -41,6 +42,7 @@
       "size" : "256x256"
     },
     {
+      "filename" : "inputLock-macOS-Default-512x512@1x.png",
       "idiom" : "mac",
       "scale" : "1x",
       "size" : "512x512"

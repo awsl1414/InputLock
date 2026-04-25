@@ -13,6 +13,7 @@ protocol InputSourceService {
 final class InputSourceServiceImpl: InputSourceService {
     private(set) var availableSources: [InputSource] = []
     private var sourceMap: [String: TISInputSource] = [:]
+    private var localObserver: NSObjectProtocol?
 
     var onSourceChanged: ((String) -> Void)?
 
@@ -26,18 +27,37 @@ final class InputSourceServiceImpl: InputSourceService {
         startObserving()
     }
 
+    deinit {
+        CFNotificationCenterRemoveObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            nil,
+            CFNotificationName(kTISNotifySelectedKeyboardInputSourceChanged as CFString),
+            nil
+        )
+        if let localObserver {
+            NotificationCenter.default.removeObserver(localObserver)
+        }
+    }
+
     func refreshSources() {
-        guard let cfArray = TISCreateInputSourceList(nil, false)?.takeRetainedValue() else {
+        guard let rawResult = TISCreateInputSourceList(nil, false) else {
             return
         }
-        let sources = cfArray as! [TISInputSource]
+        let cfArray = rawResult.takeRetainedValue()
+        let count = CFArrayGetCount(cfArray)
 
         var newSources: [InputSource] = []
         var newMap: [String: TISInputSource] = [:]
 
-        for source in sources {
+        for i in 0..<count {
+            let source = unsafeBitCast(CFArrayGetValueAtIndex(cfArray, i), to: TISInputSource.self)
+
             guard let category = propertyString(source, kTISPropertyInputSourceCategory),
                   category == kTISCategoryKeyboardInputSource as String else { continue }
+            guard let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled) else { continue }
+            let isEnabled = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(ptr).takeUnretainedValue())
+            guard isEnabled else { continue }
+
             guard let ptr = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsSelectCapable) else { continue }
             let isSelectable = CFBooleanGetValue(Unmanaged<CFBoolean>.fromOpaque(ptr).takeUnretainedValue())
             guard isSelectable else { continue }
@@ -54,8 +74,14 @@ final class InputSourceServiceImpl: InputSourceService {
     }
 
     func selectSource(id: String) {
-        guard let source = sourceMap[id] else { return }
-        TISSelectInputSource(source)
+        if let source = sourceMap[id] {
+            TISSelectInputSource(source)
+            return
+        }
+        refreshSources()
+        if let source = sourceMap[id] {
+            TISSelectInputSource(source)
+        }
     }
 
     // MARK: - Private
@@ -64,7 +90,7 @@ final class InputSourceServiceImpl: InputSourceService {
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(),
             nil,
-            { center, observer, name, _, _ in
+            { _, _, _, _, _ in
                 NotificationCenter.default.post(name: .inputSourceChanged, object: nil)
             },
             kTISNotifySelectedKeyboardInputSourceChanged as CFString,
@@ -72,7 +98,7 @@ final class InputSourceServiceImpl: InputSourceService {
             .deliverImmediately
         )
 
-        NotificationCenter.default.addObserver(
+        localObserver = NotificationCenter.default.addObserver(
             forName: .inputSourceChanged,
             object: nil,
             queue: .main
@@ -87,8 +113,4 @@ final class InputSourceServiceImpl: InputSourceService {
         guard let ptr = TISGetInputSourceProperty(source, key) else { return nil }
         return Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
     }
-}
-
-extension Notification.Name {
-    static let inputSourceChanged = Notification.Name("InputSourceChanged")
 }

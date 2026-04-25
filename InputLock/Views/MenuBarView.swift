@@ -43,7 +43,10 @@ struct MenuBarView: View {
 
         Toggle("登录时自动启动", isOn: Binding(
             get: { appState.launchAtLoginEnabled },
-            set: { _ in appState.toggleLaunchAtLogin() }
+            set: { newValue in
+                guard newValue != appState.launchAtLoginEnabled else { return }
+                appState.toggleLaunchAtLogin()
+            }
         ))
 
         Divider()

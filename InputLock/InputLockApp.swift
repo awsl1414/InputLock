@@ -17,6 +17,7 @@ struct InputLockApp: App {
             authorizationService: auth,
             launchAtLoginService: launch
         )
+        state.startup()
         _appState = State(wrappedValue: state)
     }
 

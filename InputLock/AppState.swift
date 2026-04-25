@@ -16,10 +16,10 @@ final class AppState {
     private var isReverting = false
 
     // MARK: - 服务
-    var inputSourceService: InputSourceService
+    private(set) var inputSourceService: InputSourceService
     let eventDetector: EventDetectorService
-    let authorizationService: AuthorizationService
-    let launchAtLoginService: LaunchAtLoginService
+    private(set) var authorizationService: AuthorizationService
+    private(set) var launchAtLoginService: LaunchAtLoginService
 
     // MARK: - UserDefaults
     @ObservationIgnored
@@ -73,6 +73,10 @@ final class AppState {
         }
     }
 
+    func openSystemPreferences() {
+        authorizationService.openSystemPreferences()
+    }
+
     func toggleLaunchAtLogin() {
         do {
             if launchAtLoginEnabled {
@@ -91,6 +95,7 @@ final class AppState {
         inputSourceService.refreshSources()
         availableSources = inputSourceService.availableSources
         isAuthorized = authorizationService.isAuthorized
+        launchAtLoginEnabled = launchAtLoginService.isEnabled
         authorizationService.startMonitoring()
 
         if !isAuthorized {
@@ -124,8 +129,13 @@ final class AppState {
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                let wasUnauthorized = !self.isAuthorized
                 self.isAuthorized = self.authorizationService.isAuthorized
-                // Re-establish observation tracking for the next change
+
+                if wasUnauthorized && self.isAuthorized && self.isLocked {
+                    self.eventDetector.startMonitoring()
+                }
+
                 self.observeAuthorization()
             }
         }
@@ -149,7 +159,8 @@ final class AppState {
         revert(to: targetID)
     }
 
-    private func revert(to targetID: String) {
+    private func revert(to targetID: String, remainingRetries: Int = 5) {
+        guard remainingRetries > 0 else { return }
         isReverting = true
         inputSourceService.selectSource(id: targetID)
 
@@ -159,7 +170,7 @@ final class AppState {
 
             let currentID = self.inputSourceService.currentSourceID
             if currentID != targetID {
-                self.revert(to: targetID)
+                self.revert(to: targetID, remainingRetries: remainingRetries - 1)
             }
         }
     }
@@ -169,7 +180,6 @@ final class AppState {
     private func loadPersistedState() {
         isLocked = defaults.bool(forKey: "isLocked")
         lockedSourceID = defaults.string(forKey: "lockedSourceID")
-        launchAtLoginEnabled = defaults.bool(forKey: "launchAtLogin")
     }
 
     private func persistState() {
@@ -177,8 +187,4 @@ final class AppState {
         defaults.set(lockedSourceID, forKey: "lockedSourceID")
         defaults.set(launchAtLoginEnabled, forKey: "launchAtLogin")
     }
-}
-
-extension Notification.Name {
-    static let showOnboarding = Notification.Name("ShowOnboarding")
 }

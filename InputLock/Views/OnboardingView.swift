@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     let appState: AppState
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 20) {
@@ -27,12 +28,12 @@ struct OnboardingView: View {
 
             HStack(spacing: 12) {
                 Button("打开系统设置") {
-                    appState.authorizationService.openSystemPreferences()
+                    appState.openSystemPreferences()
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button("稍后设置") {
-                    NSApplication.shared.keyWindow?.close()
+                    dismiss()
                 }
                 .buttonStyle(.bordered)
             }
