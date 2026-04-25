@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**InputLock** — macOS 原生输入法锁定工具，防止系统自动切换输入法，放行用户主动切换。详细需求见 [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)，技术栈规划见 [docs/TECH_STACK.md](docs/TECH_STACK.md)。
+**InputLock** — macOS 原生输入法锁定工具，防止系统自动切换输入法，放行用户主动切换。详细需求见 [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)，技术栈规划见 [docs/TECH_STACK.md](docs/TECH_STACK.md)，版本变更记录见 [docs/CHANGELOG.md](docs/CHANGELOG.md)。
 
 ## Build & Run
 

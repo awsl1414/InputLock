@@ -102,6 +102,10 @@ InputLock/
     └── Notification+Names.swift    — 通知名统一定义
 ```
 
+## 变更日志
+
+见 [CHANGELOG.md](docs/CHANGELOG.md)。
+
 ## 许可证
 
 [MIT](LICENSE)
