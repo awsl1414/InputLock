@@ -17,7 +17,7 @@ final class AppState {
 
     // MARK: - 服务
     private(set) var inputSourceService: InputSourceService
-    let eventDetector: EventDetectorService
+    private(set) var eventDetector: EventDetectorService
     private(set) var authorizationService: AuthorizationService
     private(set) var launchAtLoginService: LaunchAtLoginService
 
@@ -88,7 +88,7 @@ final class AppState {
             launchAtLoginEnabled.toggle()
             persistState()
         } catch {
-            print("Failed to toggle launch at login: \(error)")
+            launchAtLoginEnabled = launchAtLoginService.isEnabled
         }
     }
 

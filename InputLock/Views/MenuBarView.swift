@@ -3,6 +3,7 @@ import SwiftUI
 struct MenuBarView: View {
     let appState: AppState
     @Environment(\.openWindow) private var openWindow
+    @State private var onboardingObserver: NSObjectProtocol?
 
     var body: some View {
         Button {
@@ -19,6 +20,17 @@ struct MenuBarView: View {
                 Label("输入法锁定: 开启", systemImage: "lock.fill")
             } else {
                 Label("输入法锁定: 关闭", systemImage: "lock.open.fill")
+            }
+        }
+        .onAppear {
+            guard onboardingObserver == nil else { return }
+            onboardingObserver = NotificationCenter.default.addObserver(
+                forName: .showOnboarding,
+                object: nil,
+                queue: .main
+            ) { _ in
+                openWindow(id: "onboarding")
+                NSApp.activate(ignoringOtherApps: true)
             }
         }
 
@@ -59,16 +71,6 @@ struct MenuBarView: View {
 
         Button("退出") {
             NSApplication.shared.terminate(nil)
-    }
-        .onAppear {
-            NotificationCenter.default.addObserver(
-                forName: .showOnboarding,
-                object: nil,
-                queue: .main
-            ) { _ in
-                openWindow(id: "onboarding")
-                NSApp.activate(ignoringOtherApps: true)
-            }
         }
     }
 }
