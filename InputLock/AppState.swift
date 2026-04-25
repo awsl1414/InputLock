@@ -16,7 +16,7 @@ final class AppState {
     private var isReverting = false
 
     // MARK: - 服务
-    let inputSourceService: InputSourceService
+    var inputSourceService: InputSourceService
     let eventDetector: EventDetectorService
     let authorizationService: AuthorizationService
     let launchAtLoginService: LaunchAtLoginService

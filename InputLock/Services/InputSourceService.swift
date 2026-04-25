@@ -4,7 +4,7 @@ import Foundation
 protocol InputSourceService {
     var availableSources: [InputSource] { get }
     var currentSourceID: String { get }
-    var onSourceChanged: (@MainActor (String) -> Void)? { get set }
+    var onSourceChanged: ((String) -> Void)? { get set }
     func selectSource(id: String)
     func refreshSources()
 }
@@ -14,7 +14,7 @@ final class InputSourceServiceImpl: InputSourceService {
     private(set) var availableSources: [InputSource] = []
     private var sourceMap: [String: TISInputSource] = [:]
 
-    var onSourceChanged: (@MainActor (String) -> Void)?
+    var onSourceChanged: ((String) -> Void)?
 
     var currentSourceID: String {
         guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else { return "" }
@@ -27,9 +27,11 @@ final class InputSourceServiceImpl: InputSourceService {
     }
 
     func refreshSources() {
-        guard let sources = TISCopyAvailableKeyboardInputSources()?.takeRetainedValue() as? [TISInputSource] else {
+        guard let cfArray = TISCreateInputSourceList(nil, false)?.takeRetainedValue() else {
             return
         }
+        let sources = cfArray as! [TISInputSource]
+
         var newSources: [InputSource] = []
         var newMap: [String: TISInputSource] = [:]
 
@@ -77,9 +79,7 @@ final class InputSourceServiceImpl: InputSourceService {
         ) { [weak self] _ in
             guard let self else { return }
             let currentID = self.currentSourceID
-            Task { @MainActor in
-                self.onSourceChanged?(currentID)
-            }
+            self.onSourceChanged?(currentID)
         }
     }
 
