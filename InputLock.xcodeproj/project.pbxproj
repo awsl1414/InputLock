@@ -6,6 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildRule section */
+		0211BDC72F9D45F9009587B0 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.proxy.script;
+			fileType = folder.rkassets;
+			inputFiles = (
+			);
+			isEditable = 1;
+			outputFiles = (
+			);
+			script = "# <com.apple.build-tasks.compile-rk-assets.xcplugin>\n";
+		};
+/* End PBXBuildRule section */
+
 /* Begin PBXFileReference section */
 		0211BD542F9CE0BF009587B0 /* InputLock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = InputLock.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -57,6 +71,7 @@
 				0211BD522F9CE0BF009587B0 /* Resources */,
 			);
 			buildRules = (
+				0211BDC72F9D45F9009587B0 /* PBXBuildRule */,
 			);
 			dependencies = (
 			);
@@ -258,7 +273,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = InputLock/Info.plist;
+				INFOPLIST_FILE = InputLock-Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -290,7 +305,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = InputLock/Info.plist;
+				INFOPLIST_FILE = InputLock-Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
