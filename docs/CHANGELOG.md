@@ -2,6 +2,19 @@
 
 本文件记录 InputLock 的所有版本变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [1.0.1] - 2026-04-26
+
+### Added
+
+- 检查更新 — 关于窗口内可检查 GitHub Releases 新版本
+- 更新日志 — 支持查看 HTML 格式的版本更新内容
+- 一键更新 — 发现新版本后可直接跳转 GitHub Releases 页面
+
+### Fixed
+
+- 修复菜单栏通知注册位置不当导致 onboarding 窗口可能无法弹出的问题
+- 修复 HTML 更新日志解析阻塞主线程的问题
+
 ## [1.0.0] - 2026-04-26
 
 首个正式版本。
