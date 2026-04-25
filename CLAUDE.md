@@ -36,7 +36,19 @@ xcodebuild -project InputLock.xcodeproj -scheme InputLock test
 
 项目使用 Xcode 的 `PBXFileSystemSynchronizedRootGroup`，`InputLock/` 目录下的源文件会自动同步到 Xcode 项目中，无需手动在 pbxproj 中添加文件引用。
 
-当前为 SwiftUI App 生命周期模式（`@main` 标记的 `App` 结构体），通过 `WindowGroup` 管理主窗口。
+```
+InputLockApp (@main)
+  └── MenuBarExtra (SwiftUI)
+        └── AppState (@Observable)
+              ├── InputSourceService — TIS API 输入法枚举/切换/监听
+              ├── EventDetectorService — CGEventTap listen-only 快捷键检测
+              ├── AuthorizationService — AXIsProcessTrusted 权限轮询
+              └── LaunchAtLoginService — SMAppService 登录项管理
+```
+
+- 所有服务通过协议定义，具体实现以 `Impl` 后缀命名
+- `AppState` 持有全部 UI 状态和锁定逻辑，是视图的唯一数据源
+- 锁定机制：监听输入法变化 → 时间戳窗口区分用户/系统切换 → 系统切换时自动回退
 
 ## Key Technical Decisions
 
