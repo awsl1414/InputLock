@@ -2,6 +2,11 @@ import ApplicationServices
 import CoreGraphics
 import Foundation
 
+private enum EventDetectorKeycode {
+    static let space: Int64 = 49
+    static let capsLock: Int64 = 57
+}
+
 protocol EventDetectorService {
     var lastSwitchShortcutTime: Date? { get }
     var isMonitoring: Bool { get }
@@ -73,14 +78,10 @@ private func eventTapCallback(
 
     let keycode = event.getIntegerValueField(.keyboardEventKeycode)
 
-    // 只处理 Caps Lock (57) 和 Space (49)，其余直接放行
-    guard keycode == 57 || keycode == 49 else {
-        return Unmanaged.passUnretained(event)
-    }
+    let isCtrlSpace = keycode == EventDetectorKeycode.space && event.flags.contains(.maskControl)
+    let isCapsLock = keycode == EventDetectorKeycode.capsLock
 
-    if keycode == 49 && event.flags.contains(.maskControl) {
-        recordSwitchTime(service)
-    } else if keycode == 57 {
+    if isCtrlSpace || isCapsLock {
         recordSwitchTime(service)
     }
 

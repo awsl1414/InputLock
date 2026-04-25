@@ -10,6 +10,7 @@ struct MenuBarView: View {
                 appState.toggleLock()
             } else {
                 openWindow(id: "onboarding")
+                NSApp.activate(ignoringOtherApps: true)
             }
         } label: {
             if !appState.isAuthorized {
@@ -51,11 +52,12 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("关于 InputLock") {
+        Button("关于") {
             openWindow(id: "about")
+            NSApp.activate(ignoringOtherApps: true)
         }
 
-        Button("退出 InputLock") {
+        Button("退出") {
             NSApplication.shared.terminate(nil)
     }
         .onAppear {
@@ -65,6 +67,7 @@ struct MenuBarView: View {
                 queue: .main
             ) { _ in
                 openWindow(id: "onboarding")
+                NSApp.activate(ignoringOtherApps: true)
             }
         }
     }

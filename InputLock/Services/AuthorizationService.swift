@@ -11,6 +11,7 @@ protocol AuthorizationService {
 final class AuthorizationServiceImpl: AuthorizationService {
     var isAuthorized = false
 
+    private let pollInterval: TimeInterval = 1.0
     private var timer: Timer?
 
     init() {
@@ -24,8 +25,8 @@ final class AuthorizationServiceImpl: AuthorizationService {
 
     func startMonitoring() {
         guard timer == nil else { return }
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
                 self?.checkAuthorization()
             }
         }

@@ -27,15 +27,26 @@ struct OnboardingView: View {
             .background(.quaternary, in: .rect(cornerRadius: 8))
 
             HStack(spacing: 12) {
-                Button("打开系统设置") {
+                Button {
                     appState.openSystemPreferences()
+                } label: {
+                    Text("打开系统设置")
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(.tint, in: .rect(cornerRadius: 6))
+                        .foregroundStyle(.white)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.plain)
 
-                Button("稍后设置") {
+                Button {
                     dismiss()
+                } label: {
+                    Text("稍后设置")
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(.quaternary, in: .rect(cornerRadius: 6))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
         }
         .padding(32)

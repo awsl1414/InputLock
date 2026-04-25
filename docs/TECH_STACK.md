@@ -6,13 +6,16 @@
 
 | 层级 | 技术选型 |
 |------|---------|
-| 语言 | Swift 6 (Strict Concurrency) |
-| UI 框架 | SwiftUI + AppKit |
-| 并发模型 | Swift Concurrency (async/await, Actor) |
-| 事件检测 | CGEventTap (listenOnly) |
+| 语言 | Swift 6 (Strict Concurrency, MainActor 默认隔离) |
+| UI 框架 | SwiftUI |
+| 并发模型 | Swift Concurrency + @Observable |
+| 事件检测 | CGEventTap (listenOnly, keyDown + flagsChanged) |
 | 输入法 API | Carbon TIS (Text Input Source) |
-| 持久化 | UserDefaults + @AppStorage |
-| 最低部署 | macOS 26 |
+| 输入法监听 | Darwin CFNotificationCenter |
+| 持久化 | UserDefaults |
+| 权限检测 | AXIsProcessTrusted() 轮询 |
+| 登录项 | SMAppService (macOS 13+) |
+| 最低部署 | macOS 14.0 |
 
 ---
 
@@ -20,22 +23,20 @@
 
 ### MenuBarExtra (SwiftUI)
 
-使用 SwiftUI `MenuBarExtra` 创建菜单栏图标和菜单，这是 macOS 13+ 引入的原生 API：
+使用 SwiftUI `MenuBarExtra` 创建菜单栏图标和菜单：
 
 ```swift
 @main
 struct InputLockApp: App {
     var body: some Scene {
-        MenuBarExtra("InputLock", systemImage: "lock.fill") {
-            // 菜单内容
-        }
+        MenuBarExtra { ... } label: { ... }
     }
 }
 ```
 
 ### 隐藏 Dock 图标
 
-在 `Info.plist` 中设置 `LSUIElement = YES`，使应用不在 Dock 中显示图标。
+在 `InputLock-Info.plist`（项目根目录）中设置 `LSUIElement = true`，使应用不在 Dock 中显示图标。
 
 ---
 
@@ -45,50 +46,60 @@ struct InputLockApp: App {
 
 通过 Carbon 框架的 TIS API 枚举和管理输入法：
 
-- `TISCopyAvailableKeyboardInputSources()` — 获取所有可用输入法
+- `TISCreateInputSourceList(nil, false)` — 获取用户已启用的输入法（`includeAllInstalled = false`）
 - `TISCopyCurrentKeyboardInputSource()` — 获取当前激活的输入法
-- `TISGetInputSourceProperty(source, kTISPropertyInputSourceID)` — 获取输入法唯一标识
-- `TISGetInputSourceProperty(source, kTISPropertyLocalizedName)` — 获取输入法显示名称
+- `TISGetInputSourceProperty(source, key)` — 获取输入法属性（ID、名称、启用状态等）
 - `TISSelectInputSource(source)` — 切换到指定输入法
+
+### CF 类型桥接
+
+TIS API 返回 CFType，需要手动桥接：
+
+```swift
+let cfArray = rawResult.takeRetainedValue()
+let count = CFArrayGetCount(cfArray)
+let source = unsafeBitCast(CFArrayGetValueAtIndex(cfArray, i), to: TISInputSource.self)
+```
+
+不能使用 `as! [TISInputSource]` 强转。`MEMBER_IMPORT_VISIBILITY` 已关闭，因为 Carbon TIS 头文件不在 umbrella header 中。
 
 ### 输入法变化监听
 
-通过 `NotificationCenter` 监听系统输入法变化通知：
+通过 `CFNotificationCenterAddObserver` 监听 Darwin notification：
 
-- `NSTextInputContextKeyboardSelectionDidChangeNotification` — 输入法切换时触发
+- `kTISNotifySelectedKeyboardInputSourceChanged` — 全局输入法切换通知
+- 桥接到 `NotificationCenter.default` 用于 MainActor 处理
+- observer 在 `deinit` 中清理
+
+### 缓存策略
+
+`sourceMap: [String: TISInputSource]` 缓存输入法引用。`selectSource(id:)` 未命中时自动调用 `refreshSources()` 刷新缓存。
 
 ---
 
 ## 3. 锁定机制：检测并回退
 
-### 核心思路
+### 核心流程
 
-目标是对抗**系统自动切换输入法**（如窗口焦点变化时 macOS 自动恢复上次使用的输入法），而非拦截用户主动切换。
-
-因此不需要 `CGEventTap` 拦截键盘事件，而是采用**监听 → 判断 → 回退**的模式：
+对抗**系统自动切换输入法**（如窗口焦点变化时 macOS 自动恢复上次使用的输入法），放行用户主动切换。
 
 ```
-系统自动切换输入法 → 监听到变化 → 判断来源
-  ├── 系统自动切换 → 调用 TISSelectInputSource 切回锁定的输入法
-  └── 用户主动切换 → 放行，更新锁定目标为用户选择的输入法
+输入法变化通知 → handleSourceChanged
+  ├── isReverting → 跳过（防止递归）
+  ├── 与锁定目标一致 → 跳过
+  ├── 快捷键时间戳在 100ms 窗口内 → 用户切换，更新锁定目标
+  └── 否则 → 系统切换，revert 切回（最多 5 次，间隔 50ms）
 ```
 
-### 来源区分策略
+### 来源区分
 
-需要区分输入法切换的来源：
-
-1. **用户主动切换** — 用户按下快捷键（Caps Lock、Ctrl+Space 等）切换输入法
-   - 处理：放行，并将锁定目标更新为新输入法
-2. **系统自动切换** — 窗口焦点变化、系统策略等触发的自动切换
-   - 处理：立即调用 `TISSelectInputSource()` 切回锁定的输入法
-
-区分方法：通过短时间窗口内是否检测到输入法切换快捷键的键盘事件来判断。可能需要轻量级的 `CGEventTap` 仅用于检测（不拦截）快捷键按下，或通过对比前后状态变化模式来推断来源。
+- **用户主动切换** — `EventDetectorService` 检测 Ctrl+Space / Caps Lock 按键时间戳
+- **系统自动切换** — 无对应快捷键事件，在时间窗口外触发
 
 ### 所需权限
 
-由于不再拦截键盘事件，权限需求降低：
-- **Accessibility 权限** — 可能仍需，取决于来源检测方案
-- 不再需要 Input Monitoring 权限（若不使用 CGEventTap）
+- **Accessibility（辅助功能）权限** — CGEventTap 和 AXIsProcessTrusted 都需要
+- 不需要 Input Monitoring 权限（listenOnly 模式）
 
 ---
 
@@ -96,28 +107,23 @@ struct InputLockApp: App {
 
 项目已启用 Swift 6 并发特性：
 
-- `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — 默认 MainActor 隔离
-- `SWIFT_APPROACHABLE_CONCURRENCY = YES` — 启用渐进式并发迁移
+- `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — 所有类型默认 MainActor 隔离
+- `SWIFT_APPROACHABLE_CONCURRENCY = YES` — 渐进式并发迁移
 
-### 架构模式
+### 模式
 
-```
-InputLockApp (@main)
-  └── MenuBarExtra (SwiftUI 视图)
-        └── InputLockManager (ObservableObject / @Observable)
-              ├── InputSourceMonitor — 监听输入法变化 (TIS API + NotificationCenter)
-              ├── EventTapManager — 管理事件拦截 (CGEvent Tap)
-              └── LockState — 锁定状态持久化 (UserDefaults)
-```
-
-关键类型使用 `@Observable`（macOS 14+ Observation 框架）替代 `ObservableObject`，这是 Apple 推荐的新标准。
+- `@Observable` 替代 `ObservableObject`（macOS 14+ Observation 框架）
+- `MainActor.assumeIsolated` 用于 Timer 回调等已知在主线程的上下文
+- `withObservationTracking` + 手动重连用于监听 @Observable 属性变化
+- 服务回调使用 `[weak self]` 避免循环引用
 
 ---
 
 ## 5. 持久化
 
-- `@AppStorage` (SwiftUI) — 直接绑定 UserDefaults 到 SwiftUI 视图
-- 存储内容：用户锁定的输入法 ID、锁定开关状态
+- UserDefaults 存储三组状态：`isLocked`、`lockedSourceID`、`launchAtLogin`
+- 启动项实际状态由 `SMAppService.mainApp.status` 驱动，不依赖 UserDefaults 缓存
+- `AppState` 在 `startup()` 中校准启动项状态为 SMAppService 真实值
 
 ---
 
@@ -125,30 +131,26 @@ InputLockApp (@main)
 
 **结论：不推荐开启 App Sandbox。**
 
-本项目核心依赖的 API 沙盒兼容性：
-
-| API | 沙盒内 | 用途 |
-|-----|--------|------|
-| `TISCopyAvailableKeyboardInputSources()` | ✅ 可用 | 枚举输入法（只读） |
-| `TISSelectInputSource()` | ❌ 被阻止 | 切换输入法（修改全局状态） |
-| `NSTextInputContextKeyboardSelectionDidChangeNotification` | ⚠️ 仅本应用 | 无法监听系统全局变化 |
-| `kTISNotifySelectedKeyboardInputSourceChanged` (Darwin) | ⚠️ 可能受限 | 系统全局输入法变化通知 |
+| API | 沙盒兼容 | 用途 |
+|-----|----------|------|
+| `TISCreateInputSourceList` | ⚠️ 可能受限 | 枚举输入法 |
+| `TISSelectInputSource()` | ❌ 被阻止 | 切换输入法 |
+| `kTISNotifySelectedKeyboardInputSourceChanged` | ⚠️ 可能受限 | 全局输入法变化通知 |
 | `CGEventTap` | ❌ 被阻止 | 键盘事件检测 |
 
-InputLock 的两个核心操作——**全局监听输入法变化**和**调用 `TISSelectInputSource()` 切回输入法**——在沙盒下均无法完成。没有对应的沙盒 entitlement 可以授权这些操作。
-
-分发方式：关闭 Sandbox，通过 Hardened Runtime + Developer ID 签名，在 App Store 外分发（或 Notarization 后直接分发）。
+分发方式：关闭 Sandbox，通过 Hardened Runtime + Developer ID 签名 + Notarization 直接分发。
 
 ---
 
 ## 7. 依赖策略
 
-**零外部依赖**。本项目仅使用 Apple 系统 SDK 内置框架：
+**零外部依赖**。仅使用 Apple 系统 SDK：
 
 | 框架 | 用途 |
 |------|------|
-| SwiftUI | 菜单栏 UI |
-| AppKit | NSStatusBar 辅助（如需要） |
+| SwiftUI | 菜单栏 UI、窗口管理 |
 | Carbon (TIS) | 输入法枚举、切换、监听 |
-| CoreGraphics (CGEvent) | 键盘事件检测（仅检测来源，非拦截） |
-| Foundation | 基础类型、NotificationCenter、UserDefaults |
+| CoreGraphics (CGEvent) | 键盘事件检测（listen-only） |
+| ApplicationServices | AXIsProcessTrusted 权限检测 |
+| ServiceManagement | SMAppService 登录项管理 |
+| Foundation | NotificationCenter、UserDefaults、Timer |

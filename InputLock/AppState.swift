@@ -28,6 +28,7 @@ final class AppState {
     // MARK: - 常量
     private let switchTimeWindow: TimeInterval = 0.1
     private let revertCooldown: TimeInterval = 0.05
+    private let maxRevertRetries = 5
 
     init(
         inputSourceService: InputSourceService,
@@ -159,8 +160,9 @@ final class AppState {
         revert(to: targetID)
     }
 
-    private func revert(to targetID: String, remainingRetries: Int = 5) {
-        guard remainingRetries > 0 else { return }
+    private func revert(to targetID: String, remainingRetries: Int? = nil) {
+        let retries = remainingRetries ?? maxRevertRetries
+        guard retries > 0 else { return }
         isReverting = true
         inputSourceService.selectSource(id: targetID)
 
@@ -170,7 +172,7 @@ final class AppState {
 
             let currentID = self.inputSourceService.currentSourceID
             if currentID != targetID {
-                self.revert(to: targetID, remainingRetries: remainingRetries - 1)
+                self.revert(to: targetID, remainingRetries: retries - 1)
             }
         }
     }

@@ -32,12 +32,14 @@ struct InputLockApp: App {
 
         Window("InputLock 需要授权", id: "onboarding") {
             OnboardingView(appState: appState)
+                .onAppear { NSApp.activate(ignoringOtherApps: true) }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
 
-        Window("关于 InputLock", id: "about") {
+        Window("关于", id: "about") {
             AboutView()
+                .onAppear { NSApp.activate(ignoringOtherApps: true) }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
